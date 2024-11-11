@@ -16,10 +16,7 @@ def new_file(text_widget, root):
         # Clear image paths
         text_widget.image_paths = []  # Clear existing image paths
 
-
-
-
-def save_file(text_widget, root, editor):
+def save_file(text_widget, root):
     documents_path = os.path.expanduser("~/Documents")
     file_path = filedialog.asksaveasfilename(
         initialdir=documents_path,
@@ -31,21 +28,25 @@ def save_file(text_widget, root, editor):
         try:
             doc = Document()
             # Add text content
-            doc.add_paragraph(text_widget.get("1.0", tk.END).strip())
-            
-            # Add images to the document
-            if editor.image_paths:
-                doc.add_paragraph("\nImages:\n")
-                for img_path in editor.image_paths:
-                    doc.add_picture(img_path, width=Inches(2))
-                    doc.add_paragraph(img_path)  # Store image path below the image
+            text_content = text_widget.get("1.0", tk.END).strip()
+            doc.add_paragraph(text_content)
+
+            # Save images
+            image_counter = 0  # Counter for image naming
+            for img_label in text_widget.winfo_children():
+                if isinstance(img_label, tk.Label) and img_label.image:
+                    # Save the original image to a specific directory
+                    original_image = img_label.image  # This is the PIL Image object
+                    img_path = f"image_{image_counter}.png"  # You can customize the naming
+                    original_image.save(img_path)  # Save the original image
+                    doc.add_paragraph(img_path)  # Add the image path to the document
+                    image_counter += 1
 
             # Save the document
             doc.save(file_path)
             root.title(f"Beep (Text Editor) - {file_path}")
         except Exception as e:
             messagebox.showerror("Error", f"Could not save file: {str(e)}")
-
 
 def open_file(text_widget, root):
     file_path = filedialog.askopenfilename(
@@ -60,22 +61,13 @@ def open_file(text_widget, root):
             doc = Document(file_path)
             text_widget.delete(1.0, "end")
 
-            # Clear existing image paths
-            text_widget.image_paths = []  
-
-            # Read text content from the document
+            # Read text content and image paths from the document
             for paragraph in doc.paragraphs:
-                if paragraph.text.strip() == "Images:":
-                    break
-                text_widget.insert(tk.END, paragraph.text + "\n")
-
-            # Read image paths
-            for paragraph in doc.paragraphs:
-                if paragraph.text.strip() and paragraph.text.strip() != "Images:":
-                    img_path = paragraph.text.strip()
-                    text_widget.image_paths.append(img_path)
-
-                    # Insert the image into the text widget
+                text = paragraph.text.strip()
+                if text and not text.startswith("image_"):  # Assuming image paths start with "image_"
+                    text_widget.insert(tk.END, text + "\n")
+                elif text.startswith("image_"):
+                    img_path = text
                     if os.path.exists(img_path):  # Check if the image file exists
                         original_img = Image.open(img_path)
                         display_img = original_img.resize((200, 150))  # Resize for display

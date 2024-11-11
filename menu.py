@@ -11,7 +11,7 @@ def create_menus(root, menu_bar, text_widget, default_font, update_status_bar, e
     menu_bar.add_cascade(label="File", menu=file_menu)
     file_menu.add_command(label="New", command=lambda: new_file(text_widget, root))
     file_menu.add_command(label="Open", command=lambda: open_file(text_widget, root))
-    file_menu.add_command(label="Save", command=lambda: save_file(text_widget, root,editor))
+    file_menu.add_command(label="Save", command=lambda: save_file(text_widget, root))
     file_menu.add_separator()
     file_menu.add_command(label="Exit", command=root.quit)
 

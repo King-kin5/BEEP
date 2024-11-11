@@ -13,7 +13,7 @@ class TextEditor:
         self.root.geometry("1024x768")
 
         # Initialize image paths storage
-        self.image_paths = []
+       
         
         # Configure style for modern look
         self.style = ttk.Style()
