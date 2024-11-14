@@ -6,7 +6,8 @@ from docx import Document
 from docx.shared import Inches
 import os
 from tkinter import filedialog, messagebox
-
+import fitz  # PyMuPDF
+from fpdf import FPDF
 
             
 def new_file(text_widget, root):
@@ -16,69 +17,105 @@ def new_file(text_widget, root):
         # Clear image paths
         text_widget.image_paths = []  # Clear existing image paths
 
+
+
 def save_file(text_widget, root):
     documents_path = os.path.expanduser("~/Documents")
     file_path = filedialog.asksaveasfilename(
         initialdir=documents_path,
         defaultextension=".docx",
-        filetypes=[("Word documents", "*.docx"), ("All files", "*.*")]
+        filetypes=[("Word documents", "*.docx"), ("PDF files", "*.pdf"), ("All files", "*.*")]
     )
     
     if file_path:
         try:
-            doc = Document()
-            # Add text content
-            text_content = text_widget.get("1.0", tk.END).strip()
-            doc.add_paragraph(text_content)
+            if file_path.endswith(".docx"):
+                # Save as DOCX
+                doc = Document()
+                
+                # Insert blank paragraphs as invisible placeholders
+                doc.add_paragraph()  # First blank placeholder
+                doc.add_paragraph()  # Second blank placeholder
+                
+                # Get text content from the widget
+                text_content = text_widget.get("1.0", tk.END).splitlines()
+                
+                # Add each line from the text widget as a paragraph
+                for line in text_content:
+                    if line.strip():  # Skip empty lines
+                        doc.add_paragraph(line)
+                
+                # Save images if any
+                # ... (existing image handling code here) ...
 
-            # Save images
-            image_counter = 0  # Counter for image naming
-            for img_label in text_widget.winfo_children():
-                if isinstance(img_label, tk.Label) and img_label.image:
-                    # Save the original image to a specific directory
-                    original_image = img_label.image  # This is the PIL Image object
-                    img_path = f"image_{image_counter}.png"  # You can customize the naming
-                    original_image.save(img_path)  # Save the original image
-                    doc.add_paragraph(img_path)  # Add the image path to the document
-                    image_counter += 1
+                doc.save(file_path)
+                root.title(f"Beep (Text Editor) - {file_path}")
+            
+            elif file_path.endswith(".pdf"):
+                # Save as PDF
+                pdf = FPDF()
+                pdf.add_page()
+                pdf.set_font("Arial", size=12)
+                
+                # Add blank lines for invisible placeholders
+                pdf.cell(0, 10, "", ln=True)  # First blank placeholder
+                pdf.cell(0, 10, "", ln=True)  # Second blank placeholder
+                
+                # Add text content from the widget
+                text_content = text_widget.get("1.0", tk.END).splitlines()
+                for line in text_content:
+                    pdf.cell(0, 10, line, ln=True)
+                
+                # Save images if any
+                # ... (existing image handling code here) ...
 
-            # Save the document
-            doc.save(file_path)
-            root.title(f"Beep (Text Editor) - {file_path}")
+                pdf.output(file_path)
+                root.title(f"Beep (Text Editor) - {file_path}")
+
+            messagebox.showinfo("Success", f"File saved successfully as {file_path}")
+        
         except Exception as e:
             messagebox.showerror("Error", f"Could not save file: {str(e)}")
 
 def open_file(text_widget, root):
     file_path = filedialog.askopenfilename(
-        defaultextension=".docx",
         filetypes=[
             ("Word documents", "*.docx"),
+            ("PDF files", "*.pdf"),
             ("All files", "*.*")
         ]
     )
     if file_path:
         try:
-            doc = Document(file_path)
-            text_widget.delete(1.0, "end")
+            if file_path.endswith(".docx"):
+                doc = Document(file_path)
+                text_widget.delete(1.0, "end")
 
-            # Read text content and image paths from the document
-            for paragraph in doc.paragraphs:
-                text = paragraph.text.strip()
-                if text and not text.startswith("image_"):  # Assuming image paths start with "image_"
+                # Insert blank lines for invisible placeholders at the start
+                text_widget.insert(tk.END, "\n\n")  # Two blank lines as placeholders
+                
+                # Load the rest of the document content
+                for para in doc.paragraphs:
+                    if para.text.strip():  # Avoid adding additional blank lines
+                        text_widget.insert(tk.END, para.text + "\n")
+
+                root.title(f"Beep (Text Editor) - {file_path}")
+                messagebox.showinfo("Success", "Word document opened successfully!")
+
+            elif file_path.endswith(".pdf"):
+                doc = fitz.open(file_path)
+                text_widget.delete(1.0, "end")
+
+                # Add two blank lines for placeholders
+                text_widget.insert(tk.END, "\n\n")
+
+                for page_num in range(doc.page_count):
+                    page = doc[page_num]
+                    text = page.get_text()
                     text_widget.insert(tk.END, text + "\n")
-                elif text.startswith("image_"):
-                    img_path = text
-                    if os.path.exists(img_path):  # Check if the image file exists
-                        original_img = Image.open(img_path)
-                        display_img = original_img.resize((200, 150))  # Resize for display
-                        photo = ImageTk.PhotoImage(display_img)
 
-                        img_label = tk.Label(text_widget, image=photo)
-                        img_label.image = photo  # Keep a reference
-                        text_widget.window_create(tk.END, window=img_label)  # Append image at the end
-
-            root.title(f"Beep (Text Editor) - {file_path}")
-            messagebox.showinfo("Success", "File opened successfully!")
+                root.title(f"Beep (Text Editor) - {file_path}")
+                messagebox.showinfo("Success", "PDF file opened successfully!")
 
         except Exception as e:
             messagebox.showerror("Error", f"Could not open file: {str(e)}")

@@ -25,4 +25,3 @@ def create_text_widget(container, default_font):
     text.tag_configure("search", background="yellow")
     
     return text
-

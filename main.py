@@ -1,51 +1,55 @@
+# main.py
 import tkinter as tk
 from tkinter import ttk, font, filedialog, messagebox
 from file import open_file, new_file, save_file
 from theme import *  # Assuming you have theme-related functions
 from textEditor import create_text_widget  # Assuming this is a function that creates a text widget
 from menu import create_menus
-from insert import * # Import insert_image if needed
+from insert import insert_image  # Import insert_image if needed
 
 class TextEditor:
     def __init__(self):
+        print("Initializing TextEditor...")
         self.root = tk.Tk()
         self.root.title("Beep (Text Editor)")
         self.root.geometry("1024x768")
-
+        
         # Initialize image paths storage
-       
+        self.image_paths = []
         
-        # Configure style for modern look
-        self.style = ttk.Style()
-        self.style.configure("Flat.TFrame", background="white")
-        
-        # Main container
-        self.main_container = ttk.Frame(self.root, style="Flat.TFrame")
-        self.main_container.pack(fill="both", expand=True)
-        
-        # Create status bar
-        self.status_bar = ttk.Label(self.root, text="Ready", anchor="w", padding=(5, 2))
-        self.status_bar.pack(side="bottom", fill="x")
-        
-        # Set up modern font
+        # Set up font
         self.default_font = font.Font(
             family="Segoe UI" if "Segoe UI" in font.families() else "Helvetica",
             size=11
         )
         
-        # Create text widget
-        self.text = create_text_widget(self.main_container, self.default_font)
+        # Configure style for modern look
+        self.style = ttk.Style()
+        self.style.configure("Flat.TFrame", background="white")
+
+        # Main container for text widget and scrollbars
+        self.main_container = ttk.Frame(self.root, style="Flat.TFrame")
+        self.main_container.pack(fill="both", expand=True)
         
-        # Scrollbars
-        self.setup_scrollbars() 
+        # Create the text widget
+        self.text = create_text_widget(self.main_container, self.default_font)
+
+        # Setup scrollbars
+        self.setup_scrollbars()
+        
+        # Status bar
+        self.status_bar = ttk.Label(self.root, text="Ready", anchor="w", padding=(5, 2))
+        self.status_bar.pack(side="bottom", fill="x")
         
         # Create menus
         self.create_all_menus()
-        
+
         # Bind events
         self.bind_events()
+        print("Initialization complete.")
     
     def setup_scrollbars(self):
+        """Set up vertical and horizontal scrollbars"""
         # Vertical scrollbar
         self.y_scrollbar = ttk.Scrollbar(
             self.main_container,
@@ -69,12 +73,13 @@ class TextEditor:
         )
     
     def update_status_bar(self, event=None):
-        # Update status bar
+        """Update status bar with cursor position"""
         cursor_pos = self.text.index(tk.INSERT)
         line, col = cursor_pos.split('.')
         self.status_bar.config(text=f"Line: {line}, Column: {int(col) + 1}")
     
     def create_all_menus(self):
+        """Create the menu bar"""
         self.menu_bar = tk.Menu(self.root)
         self.root.config(menu=self.menu_bar)
         
@@ -88,7 +93,7 @@ class TextEditor:
         )
     
     def bind_events(self):
-        # Keyboard shortcuts
+        """Bind keyboard shortcuts and cursor movement for the status bar"""
         self.root.bind('<Control-n>', lambda e: new_file(self.text, self.root))
         self.root.bind('<Control-o>', lambda e: open_file(self.text, self.root))
         self.root.bind('<Control-s>', lambda e: save_file(self.text, self.root))
@@ -98,8 +103,10 @@ class TextEditor:
         self.text.bind('<Button-1>', self.update_status_bar)
     
     def run(self):
+        """Run the main Tkinter loop"""
         self.root.mainloop()
 
 if __name__ == "__main__":
+    print("Starting application...")
     editor = TextEditor()
     editor.run()
