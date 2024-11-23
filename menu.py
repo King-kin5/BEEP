@@ -4,7 +4,71 @@ from text import  *
 from theme import *  # Assuming you have theme-related functions
 from file import new_file, open_file, save_file
 from ai import AIFeatures  # Assuming you have AI features defined here
-from insert import insert_image
+from insert import *
+from pygments import lex
+from pygments.lexers import PythonLexer, HtmlLexer, JavaLexer, JavascriptLexer, CLexer, GoLexer
+from pygments.token import Token
+
+# Supported languages and their corresponding lexers
+LANGUAGES = {
+    "Python": PythonLexer,
+    "Java": JavaLexer,
+    "Go": GoLexer,
+    "HTML": HtmlLexer,
+    "JavaScript": JavascriptLexer,
+    "C": CLexer,
+}
+
+class SyntaxHighlightingText(tk.Text):
+    def __init__(self, parent, lexer=None, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.lexer = lexer
+        self.setup_tags()
+        self.bind("<KeyRelease>", self._highlight_syntax)
+
+    def set_language(self, language):
+        """Set the language for syntax highlighting."""
+        self.lexer = LANGUAGES[language]()
+        self._highlight_syntax()  # Highlight the current text with the new lexer
+
+    def _highlight_syntax(self, event=None):
+        """Highlight syntax in the text widget."""
+        if not self.lexer:
+            return
+
+        self.mark_set("range_start", "1.0")
+        data = self.get("1.0", "end-1c")
+        for token, content in lex(data, self.lexer):
+            start = self.index("range_start")
+            end = f"{start}+{len(content)}c"
+            self.mark_set("range_start", end)
+
+            # Apply tags based on token type
+            if token in Token.Keyword:
+                self.tag_add("keyword", start, end)
+            elif token in Token.String:
+                self.tag_add("string", start, end)
+            elif token in Token.Comment:
+                self.tag_add("comment", start, end)
+            elif token in Token.Name.Function:
+                self.tag_add("function", start, end)
+
+    def setup_tags(self):
+        """Define syntax highlighting tags."""
+        self.tag_configure("keyword", foreground="blue")
+        self.tag_configure("string", foreground="green")
+        self.tag_configure("comment", foreground="grey")
+        self.tag_configure("function", foreground="purple")
+
+
+
+
+
+
+
+
+
+
 
 def create_menus(root, menu_bar, text_widget, default_font, update_status_bar, editor):
     # File Menu
@@ -49,6 +113,17 @@ def create_menus(root, menu_bar, text_widget, default_font, update_status_bar, e
     file_menu.add_command(label="🚪 Exit",
                          command=root.quit,
                          accelerator="Alt+F4")
+    
+    # Language Menu
+    # Language menu
+    language_menu = tk.Menu(menu_bar, tearoff=0)
+    menu_bar.add_cascade(label="Language", menu=language_menu)
+
+    for lang in LANGUAGES.keys():
+        language_menu.add_command(
+            label=lang,
+            command=lambda l=lang: text_widget.set_language(l)
+        )
 
     # Edit Menu
     edit_menu = tk.Menu(menu_bar, tearoff=0)
@@ -96,6 +171,12 @@ def create_menus(root, menu_bar, text_widget, default_font, update_status_bar, e
     align_menu.add_command(label="Align Right", command=lambda: align_text("right", text_widget))
     align_menu.add_command(label="Justify", command=lambda: align_text("justify", text_widget))
 
+    #Create Table 
+     # Add Table submenu
+    table_menu = tk.Menu(options_menu, tearoff=0, bg="white", fg="black", activebackground="#f0f0f0")
+    options_menu.add_cascade(label="Create Table", menu=table_menu)
+    table_menu.add_command(label="Insert Table", command=lambda: insert_table(root,text_widget))
+
     # Line and Paragraph Spacing submenu
     spacing_menu = tk.Menu(options_menu, tearoff=0)
     options_menu.add_cascade(label="📏 Line & Paragraph Spacing", menu=spacing_menu)
@@ -114,7 +195,7 @@ def create_menus(root, menu_bar, text_widget, default_font, update_status_bar, e
     options_menu.add_command(label="Bulleted List", command=lambda: add_bullets(text_widget))
     options_menu.add_command(label="Numbered List", command=lambda: add_numbered_list(text_widget))
     
-    # Theme submenu
+    # Theme submen
     theme_menu = tk.Menu(options_menu, tearoff=0, bg="white", fg="black", activebackground="#f0f0f0")
     options_menu.add_cascade(label="🎨 Theme", menu=theme_menu)
     
@@ -161,6 +242,36 @@ def create_menus(root, menu_bar, text_widget, default_font, update_status_bar, e
     ai_menu.add_command(label="📝 Check Grammar", command=lambda: check_grammar(text_widget))
     ai_menu.add_command(label="💡 Get Context Suggestions", command=lambda: get_context_suggestions(text_widget))
     ai_menu.add_command(label="✨ Autocomplete Current Word", command=lambda: autocomplete_current_word(text_widget))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def check_grammar(text_widget):
     """Function to check grammar and style."""

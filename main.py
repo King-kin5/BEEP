@@ -5,7 +5,8 @@ from file import open_file, new_file, save_file
 from theme import *  # Assuming you have theme-related functions
 from textEditor import create_text_widget  # Assuming this is a function that creates a text widget
 from menu import create_menus
-from insert import insert_image  # Import insert_image if needed
+from insert import *  # Import insert_image if needed
+from program import *
 
 class TextEditor:
     def __init__(self):

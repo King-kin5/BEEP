@@ -14,9 +14,13 @@ def new_file(text_widget, root):
     if messagebox.askokcancel("New File", "Create new file? Unsaved changes will be lost."):
         text_widget.delete(1.0, "end")
         root.title("Beep (Text Editor) - New File")
-        # Clear image paths
-        text_widget.image_paths = []  # Clear existing image paths
+        text_widget.image_paths = []  # Clear image paths
 
+        # Destroy all existing tables
+        if hasattr(text_widget, "tables"):
+            for table in text_widget.tables:
+                table.destroy()
+            text_widget.tables = []
 
 
 def save_file(text_widget, root):
@@ -26,56 +30,42 @@ def save_file(text_widget, root):
         defaultextension=".docx",
         filetypes=[("Word documents", "*.docx"), ("PDF files", "*.pdf"), ("All files", "*.*")]
     )
-    
+
     if file_path:
         try:
             if file_path.endswith(".docx"):
-                # Save as DOCX
                 doc = Document()
                 
-                # Insert blank paragraphs as invisible placeholders
-                doc.add_paragraph()  # First blank placeholder
-                doc.add_paragraph()  # Second blank placeholder
-                
-                # Get text content from the widget
-                text_content = text_widget.get("1.0", tk.END).splitlines()
-                
-                # Add each line from the text widget as a paragraph
-                for line in text_content:
-                    if line.strip():  # Skip empty lines
-                        doc.add_paragraph(line)
-                
-                # Save images if any
-                # ... (existing image handling code here) ...
+                # Save text and tables while retaining layout
+                for i, widget_id in enumerate(text_widget.get("1.0", "end-1c").splitlines()):
+                    print(f"Processing line {i}: {widget_id}")  # Debugging line
+                    if widget_id.startswith("[TABLE]:"):  # Custom marker for tables
+                        table_index = int(widget_id.split(":")[1])
+                        table = text_widget.tables[table_index]
+                        rows = len(table.cells)
+                        cols = len(table.cells[0])
+                        print(f"Saving table {table_index} with {rows} rows and {cols} columns")  # Debugging line
+                        doc_table = doc.add_table(rows=rows, cols=cols)
+                        for r in range(rows):
+                            for c in range(cols):
+                                cell_value = table.cells[r][c].get()
+                                print(f"Saving cell [{r},{c}]: {cell_value}")  # Debugging line
+                                doc_table.cell(r, c).text = cell_value
+                    else:
+                        # Add paragraphs with preserved spacing
+                        print(f"Saving paragraph: {widget_id}")  # Debugging line
+                        doc.add_paragraph(widget_id)
 
                 doc.save(file_path)
                 root.title(f"Beep (Text Editor) - {file_path}")
-            
-            elif file_path.endswith(".pdf"):
-                # Save as PDF
-                pdf = FPDF()
-                pdf.add_page()
-                pdf.set_font("Arial", size=12)
-                
-                # Add blank lines for invisible placeholders
-                pdf.cell(0, 10, "", ln=True)  # First blank placeholder
-                pdf.cell(0, 10, "", ln=True)  # Second blank placeholder
-                
-                # Add text content from the widget
-                text_content = text_widget.get("1.0", tk.END).splitlines()
-                for line in text_content:
-                    pdf.cell(0, 10, line, ln=True)
-                
-                # Save images if any
-                # ... (existing image handling code here) ...
-
-                pdf.output(file_path)
-                root.title(f"Beep (Text Editor) - {file_path}")
+                print(f"File saved successfully as {file_path}")  # Debugging line
 
             messagebox.showinfo("Success", f"File saved successfully as {file_path}")
-        
+
         except Exception as e:
             messagebox.showerror("Error", f"Could not save file: {str(e)}")
+            print(f"Error saving file: {str(e)}")  # Debugging line
+
 
 def open_file(text_widget, root):
     file_path = filedialog.askopenfilename(
@@ -87,35 +77,37 @@ def open_file(text_widget, root):
     )
     if file_path:
         try:
+            text_widget.delete(1.0, "end")
+            text_widget.tables = []  # Reset tables
+            print("Cleared text widget and reset tables.")  # Debugging line
+
             if file_path.endswith(".docx"):
                 doc = Document(file_path)
-                text_widget.delete(1.0, "end")
 
-                # Insert blank lines for invisible placeholders at the start
-                text_widget.insert(tk.END, "\n\n")  # Two blank lines as placeholders
-                
-                # Load the rest of the document content
                 for para in doc.paragraphs:
-                    if para.text.strip():  # Avoid adding additional blank lines
-                        text_widget.insert(tk.END, para.text + "\n")
+                    text_widget.insert("end", para.text + "\n")
+                    print(f"Loaded paragraph: {para.text}")  # Debugging line
+
+                for table_index, table in enumerate(doc.tables):
+                    text_widget.insert("end", f"[TABLE]:{table_index}\n")  # Placeholder for table position
+                    rows = len(table.rows)
+                    cols = len(table.columns)
+                    print(f"Loading table {table_index} with {rows} rows and {cols} columns")  # Debugging line
+                    new_table = DraggableResizableTable(root, rows, cols, bg="white")
+                    new_table.place(x=50, y=50)  # Adjust as needed
+
+                    for r in range(rows):
+                        for c in range(cols):
+                            cell_value = table.cell(r, c).text
+                            print(f"Loading cell [{r},{c}]: {cell_value}")  # Debugging line
+                            new_table.cells[r][c].insert(0, cell_value)
+
+                    text_widget.tables.append(new_table)
 
                 root.title(f"Beep (Text Editor) - {file_path}")
                 messagebox.showinfo("Success", "Word document opened successfully!")
-
-            elif file_path.endswith(".pdf"):
-                doc = fitz.open(file_path)
-                text_widget.delete(1.0, "end")
-
-                # Add two blank lines for placeholders
-                text_widget.insert(tk.END, "\n\n")
-
-                for page_num in range(doc.page_count):
-                    page = doc[page_num]
-                    text = page.get_text()
-                    text_widget.insert(tk.END, text + "\n")
-
-                root.title(f"Beep (Text Editor) - {file_path}")
-                messagebox.showinfo("Success", "PDF file opened successfully!")
+                print("File opened successfully.")  # Debugging line
 
         except Exception as e:
             messagebox.showerror("Error", f"Could not open file: {str(e)}")
+            print(f"Error opening file: {str(e)}")  # Debugging line
